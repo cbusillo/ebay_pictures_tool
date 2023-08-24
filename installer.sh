@@ -45,4 +45,7 @@ PIP_PATH="${BREW_PATH%/brew}/pip3.11"
 $PIP_PATH install --upgrade pip || handle_error "Failed to upgrade pip"
 $PIP_PATH install -U ebay_pictures_tool || handle_error "Failed to install ebay_pictures_tool"
 
+source "$HOME/.zshrc"
+echo "Attempting to run ebay_pictures_tool..."
 ebay_pictures_tool
+echo "ebay_pictures_tool has finished."
