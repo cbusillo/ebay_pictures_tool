@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "ebay_pictures_tool"
-version = "0.0.64"
+version = "0.0.65"
 authors = ["Chris Busillo <cbusillo@gmail.com>"]
 description = "An efficient tool for processing ebay images."
 readme = "README.md"
@@ -25,7 +25,3 @@ bump2version = "^1.0.1"
 
 [tool.poetry.scripts]
 ebay_pictures_tool = "ebay_pictures_tool.main:main"
-
-[tool.poetry.package]
-name = "ebay_pictures_tool"
-include = ["ebay_pictures_tool", "ebay_pictures_tool.*"]
