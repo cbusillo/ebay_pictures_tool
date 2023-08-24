@@ -1,4 +1,4 @@
-name: Bump version and Deploy to PyPI
+name: Deploy to PyPI
 
 on:
   push:
@@ -6,83 +6,7 @@ on:
       - main
 
 jobs:
-  check-commit:
-    runs-on: ubuntu-latest
-    outputs:
-      skip: ${{ steps.check-commit.outputs.skip }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    - name: Check last commit message
-      id: check-commit
-      run: |
-        COMMIT_MSG=$(git log --format=%B -n 1)
-        if [[ "$COMMIT_MSG" == "Bump to version"* ]]; then
-          echo "skip=true" >> $GITHUB_OUTPUT
-        else
-          echo "skip=false" >> $GITHUB_OUTPUT
-        fi
-  
-
-  bump-version:
-    needs: check-commit
-    if: needs.check-commit.outputs.skip == 'false'
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code (full)
-      uses: actions/checkout@v3
-      with:
-        persist-credentials: false
-        fetch-depth: 0
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-
-    - name: Cache Python dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install Poetry
-      run: pip install poetry
-
-    - name: Configure git user
-      run: |
-        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-
-    - name: Bump version and commit
-      run: |
-        poetry version patch
-        NEW_VERSION=$(poetry version | awk '{print $2}')
-        git add pyproject.toml
-        git diff-index --quiet HEAD || git commit -m "Bump to version $NEW_VERSION"
-
-
-    - name: Tag new version
-      run: |
-        NEW_VERSION=$(poetry version | awk '{print $2}')
-        git tag $NEW_VERSION
-
-    - name: Push changes with tags
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GH_PAT }}
-        github_url: https://github.com
-        directory: .
-        tags: true
-    - name: Log GitHub Actor
-      run:
-        echo "GitHub Actor ${{ github.actor }}"
-
-
   deploy:
-    needs: bump-version
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
