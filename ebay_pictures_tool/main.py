@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
 
 import argparse
+import base64
+import json
 import logging
 import os
 import plistlib
 import re
-import json
 import shutil
 import subprocess
+import xmlrpc.client
+from io import BytesIO
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-import xmlrpc.client
-import base64
-from io import BytesIO
-
-from PIL import Image, ImageChops, ImageDraw
-from rembg.bg import remove, new_session
 
 import numpy
+from PIL import Image, ImageChops, ImageDraw
+from rembg.bg import remove, new_session
 
 # Defaults
 SD_CARD_PATH = Path("/Volumes/EOS_DIGITAL")
@@ -75,7 +74,6 @@ def install_launch_agent():
         shutil.copy(plist_file_path, launch_agent_path)
 
     with open(plist_file_path, "rb") as file:
-        print(file.read())
         file.seek(0)
         plist_data = plistlib.load(file)
 
@@ -120,7 +118,7 @@ def copy_images_from_sd_card(sd_card_path: Path, output_path: Path) -> list[Path
             logger.info(f"Processed {source_file.name}")
             files_to_process.append(destination_file)
             if not IS_TESTING:
-                source_file.unlink() # TODO: remove this after testing
+                source_file.unlink()
     return files_to_process
 
 
@@ -309,28 +307,48 @@ def parse_rgb(color_string: str) -> RGB:
         )
 
 
+def get_brew_path() -> Path | None:
+    """Return the path to the Homebrew executable or None if not found."""
+    possible_paths = [Path("/usr/local/bin/brew"), Path("/opt/homebrew/bin/brew")]
+
+    for path in possible_paths:
+        if path.exists():
+            return path
+
+    return
+
+
 def install_brew():
-    try:
-        # Check if brew is already installed
-        subprocess.check_output(["brew", "-v"])
-        print("Homebrew is already installed.")
-    except subprocess.CalledProcessError:
-        print("Installing Homebrew...")
-        # Install Homebrew
+    brew_path = get_brew_path()
+    if brew_path:
+        logger.info("Homebrew is already installed.")
+    else:
+        logger.info("Installing Homebrew...")
         subprocess.run(
             '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
             shell=True, check=True
         )
-        print("Homebrew installed successfully.")
+        logger.info("Homebrew installed successfully.")
+
+    brew_path = get_brew_path()
+
+    python_info = subprocess.check_output([brew_path.as_posix(), "info", "python@3.11"]).decode('utf-8')
+    if "Not installed" in python_info:
+        logger.info("Installing Python 3.11...")
+        # Install Python 3.11
+        subprocess.run([brew_path.as_posix(), "install", "python@3.11"], check=True)
+        logger.info("Python 3.11 installed successfully.")
+    else:
+        logger.info("Python 3.11 is already installed.")
 
 
 def install_with_brew(package_name):
     try:
         # Install package using brew
         subprocess.run(["brew", "install", package_name], check=True)
-        print(f"{package_name} installed successfully.")
+        logger.info(f"{package_name} installed successfully.")
     except subprocess.CalledProcessError:
-        print(f"Failed to install {package_name}.")
+        logger.info(f"Failed to install {package_name}.")
 
 
 def install_zbar_decode() -> callable:
