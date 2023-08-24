@@ -10,51 +10,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code (full)
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
+        persist-credentials: false
         fetch-depth: 0
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
+    - name: Install Poetry
+      run: pip install poetry
+
+    - name: Bump version using Poetry
+      run: poetry version patch
+
     - name: Configure git user
       run: |
-        git config user.name "GitHub Actions Bot"
-        git config user.email "actions@github.com"
-
-    - name: Install bump2version
-      run: pip install bump2version
-
-    - name: Bump version
-      run: bump2version patch
-
-    - name: Print GH_PAT length and hash
-      run: |
-        echo "Length of GH_PAT: ${#GH_PAT}"
-        echo "Hash of GH_PAT: $(echo -n $GH_PAT | sha256sum)"
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add pyproject.toml
+        git commit -m "Bump version"
+        git push --set-upstream https://${GIT_AUTH_TOKEN}@github.com/${{ github.repository }} main
       env:
-        GH_PAT: ${{ secrets.GH_PAT }}
-
-
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GH_PAT }}
-        github_url: https://github.com
-        directory: .
-
+        GIT_AUTH_TOKEN: ${{ secrets.GH_PAT }}
 
   deploy:
     needs: bump-version
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
