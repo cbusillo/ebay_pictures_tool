@@ -1,4 +1,4 @@
-name: Bump version and Publish
+name: Bump version and Deploy to PyPI
 
 on:
   push:
@@ -7,29 +7,43 @@ on:
 
 jobs:
   bump-version:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
-    - name: Check out code
+    - name: Checkout code
       uses: actions/checkout@v2
-    - name: Automatically bump version
-      # noinspection SpellCheckingInspection
-      uses: phips28/gh-action-bump-version@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        WITH_V: true
-      id: bump-version
+
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install poetry
-    - name: Publish to PyPI
-      env:
-        POETRY_HTTP_BASIC_PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        POETRY_HTTP_BASIC_PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        poetry publish --build
 
+    - name: Install bump2version
+      run: pip install bump2version
+
+    - name: Bump version
+      run: bump2version patch  # you can use major, minor, or patch based on your needs
+
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    needs: bump-version
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install poetry
+      run: pip install poetry
+
+    - name: Build and publish
+      run: |
+        poetry build
+        poetry publish --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }}
