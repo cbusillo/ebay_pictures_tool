@@ -34,6 +34,8 @@ jobs:
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.GH_PAT }}
+        github_url: https://github.com
+        directory: .
 
 
   deploy:
