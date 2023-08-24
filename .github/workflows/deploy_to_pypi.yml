@@ -9,13 +9,15 @@ jobs:
   bump-version:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
+    - name: Checkout code (full)
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.11'
+        python-version: '3.x'
 
     - name: Configure git user
       run: |
@@ -32,6 +34,7 @@ jobs:
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
+
 
   deploy:
     needs: bump-version
