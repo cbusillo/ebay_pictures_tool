@@ -10,6 +10,5 @@ If you get an error saying the following accompanied by a pop up window, click i
 
 ```xcode-select: note: no developer tools were found at `Applications/Xcode.app`, requesting install. Choose an option in the dialog to download the command line developer tools.```
 
+Both of these commands will take a while to run, so be patient.
 
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew install zbar1234

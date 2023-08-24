@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy
 from PIL import Image, ImageChops, ImageDraw
+from pyzbar.pyzbar import decode
 from rembg.bg import remove, new_session
 
 # Defaults
@@ -144,7 +145,7 @@ def sanitize_filename(filename: str) -> str:
 
 def decode_and_remove_qr_label(image: Image) -> (str | None, Image):
     image_np = numpy.array(image.convert('L'))
-    decoded_objects = install_zbar_decode()(image_np)
+    decoded_objects = decode(image_np)
 
     for obj in decoded_objects:
         # Get the bounding rectangle
@@ -305,65 +306,6 @@ def parse_rgb(color_string: str) -> RGB:
         raise argparse.ArgumentTypeError(
             f"Invalid color format: {color_string}. Expected format: (R,G,B) with each value between 0 and 255."
         )
-
-
-def get_brew_path() -> Path | None:
-    """Return the path to the Homebrew executable or None if not found."""
-    possible_paths = [Path("/usr/local/bin/brew"), Path("/opt/homebrew/bin/brew")]
-
-    for path in possible_paths:
-        if path.exists():
-            return path
-
-    return
-
-
-def install_brew():
-    brew_path = get_brew_path()
-    if brew_path:
-        logger.info("Homebrew is already installed.")
-    else:
-        logger.info("Installing Homebrew...")
-        subprocess.run(
-            '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
-            shell=True, check=True
-        )
-        logger.info("Homebrew installed successfully.")
-
-    brew_path = get_brew_path()
-
-    python_info = subprocess.check_output([brew_path.as_posix(), "info", "python@3.11"]).decode('utf-8')
-    if "Not installed" in python_info:
-        logger.info("Installing Python 3.11...")
-        # Install Python 3.11
-        subprocess.run([brew_path.as_posix(), "install", "python@3.11"], check=True)
-        logger.info("Python 3.11 installed successfully.")
-    else:
-        logger.info("Python 3.11 is already installed.")
-
-
-def install_with_brew(package_name):
-    try:
-        # Install package using brew
-        subprocess.run(["brew", "install", package_name], check=True)
-        logger.info(f"{package_name} installed successfully.")
-    except subprocess.CalledProcessError:
-        logger.info(f"Failed to install {package_name}.")
-
-
-def install_zbar_decode() -> callable:
-    try:
-        from pyzbar.pyzbar import decode
-        return decode
-    except ImportError as error:
-        if 'zbar' in str(error).lower():
-            logger.warning("zbar dependency not found. Attempting to install...")
-            install_brew()
-            install_with_brew("zbar")
-            from pyzbar.pyzbar import decode
-            return decode
-        else:
-            raise error
 
 
 def add_odoo_product_image(url, db, username, password, product_sku, image: Image):
