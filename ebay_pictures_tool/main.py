@@ -68,7 +68,7 @@ def install_launch_agent():
     launch_agent_name = "com.shiny.sdcardlistener.plist"
     launch_agent_path = launch_agent_dir / launch_agent_name
 
-    root_project_dir = Path(__file__).parent.parent
+    root_project_dir = Path(__file__).parent
     plist_file_path = root_project_dir / launch_agent_name
 
     if not launch_agent_path.exists():
