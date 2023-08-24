@@ -32,6 +32,9 @@ The tool requires macOS Monterey or newer. If you're using an older version of m
    A dialog will prompt you to install the necessary tools. Click "Install" and once the installation is complete, you can continue
    with the eBay Pictures Tool installation.
 
+   **Important**: After the installation is complete, please log out of your macOS user account and log back in to ensure that all
+   features of the eBay Pictures Tool operate correctly.
+
 2. **Odoo Configuration**:
 
    Once the eBay Pictures Tool is installed, it will execute and set up the environment. For integration with Odoo, configure
@@ -64,53 +67,54 @@ behavior, as detailed below.
 
 1. **Basic Command**:
 
-```
-ebay_pictures_tool
-```
+    ```
+    ebay_pictures_tool
+    ```
 
-This will execute the tool with its default settings.
+   This will execute the tool with its default settings.
+
 
 2. **Arguments**:
 
-   - `-s` or `--sd_card_path`: Path to your SD card.
-      - **Default**: `/Volumes/EOS_DIGITAL` (or `~/Desktop/Input` if in testing mode)
-     ```
-     ebay_pictures_tool -s /path/to/sd/card
-     ```
+- `-s` or `--sd_card_path`: Path to your SD card.
+    - **Default**: `/Volumes/EOS_DIGITAL` (or `~/Desktop/Input` if in testing mode)
+  ```
+  ebay_pictures_tool -s /path/to/sd/card
+  ```
 
-   - `-o` or `--output_path`: Path to the directory where you want to save the processed images.
-      - **Default**: `~/Desktop/eBay Pics`
-     ```
-     ebay_pictures_tool -o /path/to/output/directory
-     ```
+- `-o` or `--output_path`: Path to the directory where you want to save the processed images.
+    - **Default**: `~/Desktop/eBay Pics`
+  ```
+  ebay_pictures_tool -o /path/to/output/directory
+  ```
 
-   - `-t` or `--trimmed_output_path`: Path to the directory where trimmed images will be saved.
-      - **Default**: `~/Desktop/eBay Pics/Trimmed`
-     ```
-     ebay_pictures_tool -t /path/to/trimmed/output/directory
-     ```
+- `-t` or `--trimmed_output_path`: Path to the directory where trimmed images will be saved.
+    - **Default**: `~/Desktop/eBay Pics/Trimmed`
+  ```
+  ebay_pictures_tool -t /path/to/trimmed/output/directory
+  ```
 
-   - `-n` or `--nb_output_path`: Path to the directory where images without a background will be saved.
-      - **Default**: `~/Desktop/eBay Pics/NB`
-     ```
-     ebay_pictures_tool -n /path/to/no/background/output/directory
-     ```
+- `-n` or `--nb_output_path`: Path to the directory where images without a background will be saved.
+    - **Default**: `~/Desktop/eBay Pics/NB`
+  ```
+  ebay_pictures_tool -n /path/to/no/background/output/directory
+  ```
 
-   - `-b` or `--background_color`: Sets the background color for trimmed images in (R,G,B) format.
-      - **Default**: `255,255,255`
-     ```
-     ebay_pictures_tool -b 255,255,255
-     ```
+- `-b` or `--background_color`: Sets the background color for trimmed images in (R,G,B) format.
+    - **Default**: `255,255,255`
+  ```
+  ebay_pictures_tool -b 255,255,255
+  ```
 
-   - `-m` or `--model_name`: Model name to use for background removal.
-      - **Default**: `isnet-general-use`
-         - `isnet-general-use`: This model is optimal for cleanly cutting out the primary object, but it will remove everything
-           except the main subject.
-         - `u2net`: This model doesn't cut as cleanly as `isnet-general-use`, but retains smaller parts in the pictures, such as
-           screws or other minor details.
-     ```
-     ebay_pictures_tool -m model_name
-     ```
+- `-m` or `--model_name`: Model name to use for background removal.
+    - **Default**: `isnet-general-use`
+        - `isnet-general-use`: This model is optimal for cleanly cutting out the primary object, but it will remove everything
+          except the main subject.
+        - `u2net`: This model doesn't cut as cleanly as `isnet-general-use`, but retains smaller parts in the pictures, such as
+          screws or other minor details.
+  ```
+  ebay_pictures_tool -m model_name
+  ```
 
 You can combine multiple arguments in one command. For example, if you want to specify both the SD card path and the output
 directory, you can run:
@@ -127,7 +131,8 @@ ebay_pictures_tool --help
 
 ## Troubleshooting
 
-(*WIP*)
+Run the script a second time if it fails the first time. It may be intermittent connectivity issues. Make sure to log out after a
+successful installation.
 
 ## Contributing and Feedback
 
