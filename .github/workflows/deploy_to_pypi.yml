@@ -13,4 +13,4 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Print hashed GH_PAT
-      run: echo "${{ secrets.GH_PAT }}"
+      run: echo "${{ secrets.GH_PAT }}" | shasum -a 256
