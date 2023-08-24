@@ -8,7 +8,7 @@ version = "0.0.64"
 authors = ["Chris Busillo <cbusillo@gmail.com>"]
 description = "An efficient tool for processing ebay images."
 readme = "README.md"
-include = ["com.shiny.sdcardlistner.py", "secret.json.sample"]
+
 
 [tool.poetry.dependencies]
 python = "~3.11"
@@ -25,3 +25,7 @@ bump2version = "^1.0.1"
 
 [tool.poetry.scripts]
 ebay_pictures_tool = "ebay_pictures_tool.main:main"
+
+[tool.poetry.package]
+name = "ebay_pictures_tool"
+include = ["ebay_pictures_tool", "ebay_pictures_tool.*"]
