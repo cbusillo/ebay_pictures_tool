@@ -4,11 +4,11 @@ import argparse
 import logging
 import os
 import re
+import json
 import shutil
 import subprocess
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-import webbrowser
 import xmlrpc.client
 import base64
 from io import BytesIO
@@ -25,17 +25,31 @@ OUTPUT_PATH = Path.home() / "Desktop/eBay Pics"
 TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "Trimmed"
 NB_OUTPUT_PATH = OUTPUT_PATH / "NB"
 
-ODOO_URL = os.environ.get("ODOO_URL")
-DB = os.environ.get("ODOO_DB")
-USERNAME = os.environ.get("ODOO_USERNAME")
-PASSWORD = os.environ.get("ODOO_PASSWORD")
-MODEL = "product.import"
-FIELD_NAME = "default_code"
-
 PHOTO_EXTENSIONS = ["JPG", "jpg", "CR2", "cr2", "PNG", "png", "JPEG", "jpeg"]
 RGB = tuple[int, int, int]
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def load_secrets_from_file():
+    home = os.path.expanduser("~")
+    secret_file_path = os.path.join(home, ".shiny", "secret.json")
+
+    try:
+        with open(secret_file_path) as file:
+            secret_file_json = json.load(file)
+    except FileNotFoundError:
+        logger.error(f"Secret file not found at {secret_file_path}")
+        return {}
+
+    return secret_file_json
+
+
+secrets = load_secrets_from_file()
+ODOO_URL = secrets.get("odoo_url", "")
+ODOO_DB = secrets.get("odoo_db", "")
+ODOO_USERNAME = secrets.get("odoo_username", "")
+ODOO_PASSWORD = secrets.get("odoo_password", "")
 
 
 def eject_sd_card(sd_card_path: Path) -> None:
@@ -137,7 +151,7 @@ def generate_unique_filename(output_path: Path, filename: str) -> Path:
 def add_image_to_odoo(sku: str, image: Image) -> None:
     if sku and 0 < len(sku) < 10 and sku.isdigit():
         logger.info(f"Updating record {sku} with image")
-        add_odoo_product_image(ODOO_URL, DB, USERNAME, PASSWORD, sku, image)
+        add_odoo_product_image(ODOO_URL, ODOO_DB, ODOO_USERNAME, ODOO_PASSWORD, sku, image)
     else:
         logger.warning(f"Record not found for SKU: {sku}")
 
@@ -174,7 +188,8 @@ def process_image(
     trimmed_image_with_bg = add_background_color(trimmed_image, background_color)
     trimmed_image_with_bg.save(trimmed_image_file_path, format="PNG")
     original_image.close()
-    add_image_to_odoo(qr_data, trimmed_image_with_bg)
+    if ODOO_DB:
+        add_image_to_odoo(qr_data, trimmed_image_with_bg)
 
 
 def trim_image(image: Image) -> Image:
@@ -297,9 +312,10 @@ def install_zbar_decode() -> callable:
 
 
 def add_odoo_product_image(url, db, username, password, product_sku, image: Image):
+    # noinspection SpellCheckingInspection
     common = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(url))
     uid = common.authenticate(db, username, password, {})
-
+    # noinspection SpellCheckingInspection
     models = xmlrpc.client.ServerProxy('{}/xmlrpc/2/object'.format(url))
 
     # 1. Find the product based on its SKU
