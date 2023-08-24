@@ -10,6 +10,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw
 from rembg.bg import remove, new_session
+
 import numpy
 
 # Defaults
@@ -83,7 +84,7 @@ def sanitize_filename(filename: str) -> str:
 
 def decode_and_remove_qr_label(image: Image) -> (str | None, Image):
     image_np = numpy.array(image.convert('L'))
-    decoded_objects = decode(image_np)
+    decoded_objects = install_zbar_decode()(image_np)
 
     for obj in decoded_objects:
         # Get the bounding rectangle
@@ -119,6 +120,7 @@ def generate_unique_filename(output_path: Path, filename: str) -> Path:
         new_filepath = output_path / f"{base_name}_{counter}{extension}"
         counter += 1
     return new_filepath
+
 
 def process_image(
         original_image_file_path: Path,
@@ -258,20 +260,22 @@ def install_with_brew(package_name):
         print(f"Failed to install {package_name}.")
 
 
-def check_zbar_dependency():
+def install_zbar_decode() -> callable:
     try:
         from pyzbar.pyzbar import decode
+        return decode
     except ImportError as e:
         if 'zbar' in str(e).lower():
-            logger.info("zbar dependency not found. Attempting to install...")
+            logger.warning("zbar dependency not found. Attempting to install...")
             install_brew()
             install_with_brew("zbar")
+            from pyzbar.pyzbar import decode
+            return decode
         else:
             raise e
 
 
 def main() -> None:
-    check_zbar_dependency()
     args = get_args()
     sd_card_path = Path(args.sd_card_path)
     output_path = Path(args.output_path)
