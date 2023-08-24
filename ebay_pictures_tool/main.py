@@ -26,6 +26,8 @@ OUTPUT_PATH = Path.home() / "Desktop/eBay Pics"
 TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "Trimmed"
 NB_OUTPUT_PATH = OUTPUT_PATH / "NB"
 
+IS_TESTING = os.environ.get("TESTING_MODE", "").lower() in ["true", "1"]
+
 PHOTO_EXTENSIONS = ["JPG", "jpg", "CR2", "cr2", "PNG", "png", "JPEG", "jpeg"]
 RGB = tuple[int, int, int]
 logging.basicConfig(level=logging.INFO)
@@ -117,7 +119,8 @@ def copy_images_from_sd_card(sd_card_path: Path, output_path: Path) -> list[Path
             shutil.copy(source_file, destination_file)
             logger.info(f"Processed {source_file.name}")
             files_to_process.append(destination_file)
-            # source_file.unlink() # TODO: remove this after testing
+            if not IS_TESTING:
+                source_file.unlink() # TODO: remove this after testing
     return files_to_process
 
 
