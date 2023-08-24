@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "ebay_pictures_tool"
-version = "0.0.45"
+version = "0.0.46"
 authors = ["Chris Busillo <cbusillo@gmail.com>"]
 description = "An efficient tool for processing ebay images."
 
