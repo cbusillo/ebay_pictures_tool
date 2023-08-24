@@ -43,7 +43,7 @@ def load_secrets_from_file() -> dict[str, str]:
             secret_file_json = json.load(file)
     except FileNotFoundError:
         logger.error(f"Secret file not found at {secret_file_path}.  Creating template file")
-        root_project_path = Path(__file__).parent.parent
+        root_project_path = Path(__file__).parent
         sample_secret_file_path = root_project_path / "secret.json.sample"
         os.makedirs(os.path.dirname(secret_file_path), exist_ok=True)
         shutil.copy(sample_secret_file_path, secret_file_path)
