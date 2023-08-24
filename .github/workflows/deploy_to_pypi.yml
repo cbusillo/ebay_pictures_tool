@@ -6,8 +6,26 @@ on:
       - main
 
 jobs:
+  check-commit:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Check commit message
+      id: check
+      run: |
+        COMMIT_MSG=$(git log --format=%B -n 1)
+        if [[ "$COMMIT_MSG" == Bump to version* ]]; then
+          echo "::set-output name=skip::true"
+        else
+          echo "::set-output name=skip::false"
+        fi
+
   bump-version:
-    if: github.actor != 'cbusillo'
+    needs: check-commit
+    if: needs.check-commit.outputs.skip == 'false'
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code (full)
@@ -63,7 +81,6 @@ jobs:
 
 
   deploy:
-    if: github.actor != 'cbusillo'
     needs: bump-version
     runs-on: ubuntu-latest
     steps:
