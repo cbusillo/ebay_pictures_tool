@@ -31,15 +31,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def load_secrets_from_file():
-    home = os.path.expanduser("~")
-    secret_file_path = os.path.join(home, ".shiny", "secret.json")
+def load_secrets_from_file() -> dict[str, str]:
+    home = Path.home()
+    secret_file_path = home / ".shiny" / "secret.json"
 
     try:
         with open(secret_file_path) as file:
             secret_file_json = json.load(file)
     except FileNotFoundError:
-        logger.error(f"Secret file not found at {secret_file_path}")
+        logger.error(f"Secret file not found at {secret_file_path}.  Creating template file")
+        root_project_path = Path(__file__).parent.parent
+        sample_secret_file_path = root_project_path / "secret.json.sample"
+        os.makedirs(os.path.dirname(secret_file_path), exist_ok=True)
+        shutil.copy(sample_secret_file_path, secret_file_path)
+
         return {}
 
     return secret_file_json
