@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>com.my.sdcardlistener</string>
+        <key>ProgramArguments</key>
+        <array>
+            <string>/Users/cbusillo/PycharmProjects/ebay_pictures_tool/ebay_pictures_tool.sh</string>
+        </array>
+        <key>QueueDirectories</key>
+        <array>
+            <string>/Volumes/EOS_DIGITAL</string>
+        </array>
+        <key>WatchPaths</key>
+        <key>RunAtLoad</key>
+        <true/>
+    </dict>
+</plist>
+

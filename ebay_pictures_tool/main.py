@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import logging
 import shutil
@@ -9,8 +11,8 @@ from PIL import Image, ImageChops
 from rembg.bg import remove, new_session
 
 # Defaults
-# SD_CARD_PATH = Path("/Volumes/EOS_DIGITAL")
-SD_CARD_PATH = Path("/Users/cbusillo/Desktop/Input files")
+SD_CARD_PATH = Path("/Volumes/EOS_DIGITAL")
+# SD_CARD_PATH = Path.home() /"Desktop/Input files"
 OUTPUT_PATH = Path.home() / "Desktop/eBay Pics"
 TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "Trimmed"
 NB_OUTPUT_PATH = OUTPUT_PATH / "NB"
