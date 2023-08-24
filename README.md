@@ -2,9 +2,9 @@ Welcome
 
 This project will be for efficiently processing images for eBay
 
-Open a terminal and run the following commands
+Open a terminal and run the following command
 
-```pip3 install ebay_pictures_tool```
+```/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/cbusillo/ebay_pictures_tool/main/installer.sh)"```
 
 If you get an error saying the following accompanied by a pop up window, click install, then run the command again.
 

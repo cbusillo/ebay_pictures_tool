@@ -40,6 +40,6 @@ update_zshrc "$BREW_PATH"
 $BREW_PATH install python@3.11 zbar || handle_error "Failed to install python@3.11 or zbar"
 $BREW_PATH upgrade python@3.11 zbar || handle_error "Failed to upgrade python@3.11 or zbar"
 
-PIP_PATH="${BREW_PATH%/brew}/bin/pip3.11"
+PIP_PATH="${BREW_PATH%/brew}/pip3.11"
 
 $PIP_PATH install -U ebay_pictures_tool || handle_error "Failed to install ebay_pictures_tool"
