@@ -41,7 +41,9 @@ jobs:
       run: |
         poetry version patch
         NEW_VERSION=$(poetry version | awk '{print $2}')
-        git commit -a -m "Bump to version $NEW_VERSION"
+        git add pyproject.toml
+        git diff-index --quiet HEAD || git commit -m "Bump to version $NEW_VERSION"
+
 
     - name: Tag new version
       run: |
@@ -55,6 +57,10 @@ jobs:
         github_url: https://github.com
         directory: .
         tags: true
+    - name: Log GitHub Actor
+      run:
+        echo "GitHub Actor ${{ github.actor }}"
+
 
   deploy:
     if: github.actor != 'github-actions[bot]'
