@@ -264,15 +264,15 @@ def install_zbar_decode() -> callable:
     try:
         from pyzbar.pyzbar import decode
         return decode
-    except ImportError as e:
-        if 'zbar' in str(e).lower():
+    except ImportError as error:
+        if 'zbar' in str(error).lower():
             logger.warning("zbar dependency not found. Attempting to install...")
             install_brew()
             install_with_brew("zbar")
             from pyzbar.pyzbar import decode
             return decode
         else:
-            raise e
+            raise error
 
 
 def main() -> None:
