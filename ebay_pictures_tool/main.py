@@ -2,11 +2,16 @@
 
 import argparse
 import logging
+import os
 import re
 import shutil
 import subprocess
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
+import webbrowser
+import xmlrpc.client
+import base64
+from io import BytesIO
 
 from PIL import Image, ImageChops, ImageDraw
 from rembg.bg import remove, new_session
@@ -19,6 +24,13 @@ SD_CARD_PATH = Path("/Volumes/EOS_DIGITAL")
 OUTPUT_PATH = Path.home() / "Desktop/eBay Pics"
 TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "Trimmed"
 NB_OUTPUT_PATH = OUTPUT_PATH / "NB"
+
+ODOO_URL = os.environ.get("ODOO_URL")
+DB = os.environ.get("ODOO_DB")
+USERNAME = os.environ.get("ODOO_USERNAME")
+PASSWORD = os.environ.get("ODOO_PASSWORD")
+MODEL = "product.import"
+FIELD_NAME = "default_code"
 
 PHOTO_EXTENSIONS = ["JPG", "jpg", "CR2", "cr2", "PNG", "png", "JPEG", "jpeg"]
 RGB = tuple[int, int, int]
@@ -122,6 +134,14 @@ def generate_unique_filename(output_path: Path, filename: str) -> Path:
     return new_filepath
 
 
+def add_image_to_odoo(sku: str, image: Image) -> None:
+    if sku and 0 < len(sku) < 10 and sku.isdigit():
+        logger.info(f"Updating record {sku} with image")
+        add_odoo_product_image(ODOO_URL, DB, USERNAME, PASSWORD, sku, image)
+    else:
+        logger.warning(f"Record not found for SKU: {sku}")
+
+
 def process_image(
         original_image_file_path: Path,
         nb_output_path: Path,
@@ -154,6 +174,7 @@ def process_image(
     trimmed_image_with_bg = add_background_color(trimmed_image, background_color)
     trimmed_image_with_bg.save(trimmed_image_file_path, format="PNG")
     original_image.close()
+    add_image_to_odoo(qr_data, trimmed_image_with_bg)
 
 
 def trim_image(image: Image) -> Image:
@@ -273,6 +294,42 @@ def install_zbar_decode() -> callable:
             return decode
         else:
             raise error
+
+
+def add_odoo_product_image(url, db, username, password, product_sku, image: Image):
+    common = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(url))
+    uid = common.authenticate(db, username, password, {})
+
+    models = xmlrpc.client.ServerProxy('{}/xmlrpc/2/object'.format(url))
+
+    # 1. Find the product based on its SKU
+    product_ids = models.execute_kw(
+        db, uid, password,
+        'product.import', 'search',
+        [[['default_code', '=', product_sku]]]
+    )
+
+    if not product_ids:
+        raise ValueError(f"No product found with SKU: {product_sku}")
+
+    product_id = product_ids[0]  # Assuming there's only one unique SKU
+
+    # 2. Read the image and encode it to base64
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    image_data = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+    # 3. Create a new image record linked to the product
+    image_record_id = models.execute_kw(
+        db, uid, password,
+        'product.import.image', 'create',
+        [{
+            'image_data': image_data,
+            'product_id': product_id
+        }]
+    )
+
+    return image_record_id
 
 
 def main() -> None:
