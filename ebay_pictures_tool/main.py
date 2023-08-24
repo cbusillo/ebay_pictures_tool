@@ -9,6 +9,7 @@ import plistlib
 import re
 import shutil
 import subprocess
+import time
 import xmlrpc.client
 from io import BytesIO
 from multiprocessing import Pool, cpu_count
@@ -61,6 +62,22 @@ ODOO_USERNAME = secrets.get("odoo_username", "")
 ODOO_PASSWORD = secrets.get("odoo_password", "")
 
 
+def get_brew_path() -> Path | None:
+    try:
+        architecture = subprocess.check_output(['uname', '-m']).decode('utf-8').strip()
+    except Exception as e:
+        logger.error(f"Failed to determine architecture: {e}")
+        return None
+
+    if architecture == "x86_64":
+        return Path("/usr/local/bin")
+    elif "arm" in architecture:
+        return Path("/opt/homebrew/bin")
+    else:
+        logger.error(f"Unsupported architecture: {architecture}")
+        raise ValueError(f"Unsupported architecture: {architecture}")
+
+
 def install_launch_agent():
     home = Path.home()
     launch_agent_dir = home / "Library" / "LaunchAgents"
@@ -77,13 +94,12 @@ def install_launch_agent():
         shutil.copy(plist_file_path, launch_agent_path)
 
     with open(launch_agent_path, "rb") as file:
-        file.seek(0)
         plist_data = plistlib.load(file)
 
-    correct_path = str(root_project_dir / "ebay_pictures_tool.sh")
-    if plist_data["ProgramArguments"][0] != correct_path:
+    correct_path = get_brew_path() / "ebay_pictures_tool"
+    if plist_data["ProgramArguments"][0] != correct_path.as_posix():
         logger.info(f"Updating launch agent path to {correct_path}")
-        plist_data["ProgramArguments"][0] = correct_path
+        plist_data["ProgramArguments"][0] = correct_path.as_posix()
         with launch_agent_path.open("wb") as file:
             plistlib.dump(plist_data, file)
         load_launch_agent(launch_agent_path)
@@ -91,11 +107,11 @@ def install_launch_agent():
 
 def load_launch_agent(launch_agent_path: Path):
     try:
-        subprocess.run(["launchctl", "unload", launch_agent_path])
+        subprocess.run(["launchctl", "unload", launch_agent_path], check=False)
         logger.info("Unloaded launch agent")
-
-        subprocess.run(["launchctl", "unload", launch_agent_path], check=True)
-        logger.info("Unloaded launch agent")
+        time.sleep(2)
+        subprocess.run(["launchctl", "load", launch_agent_path], check=True)
+        logger.info("Loaded launch agent")
     except subprocess.CalledProcessError:
         logger.error("Failed to load launch agent")
         raise
