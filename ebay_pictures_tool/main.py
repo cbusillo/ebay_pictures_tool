@@ -10,7 +10,6 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw
 from rembg.bg import remove, new_session
-from pyzbar.pyzbar import decode
 import numpy
 
 # Defaults
