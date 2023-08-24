@@ -73,6 +73,7 @@ def install_launch_agent():
 
     if not launch_agent_path.exists():
         logger.info(f"Installing launch agent at {launch_agent_path}")
+        launch_agent_dir.mkdir(exist_ok=True)
         shutil.copy(plist_file_path, launch_agent_path)
 
     with open(launch_agent_path, "rb") as file:
