@@ -18,3 +18,5 @@ rembg = "^2.0.50"
 build = "^0.10.0"
 twine = "^4.0.2"
 
+[tool.poetry.scripts]
+ebay_pictures_tool = "ebay_pictures_tool.main:main"
