@@ -86,6 +86,19 @@ def install_launch_agent():
         plist_data["ProgramArguments"][0] = correct_path
         with launch_agent_path.open("wb") as file:
             plistlib.dump(plist_data, file)
+        load_launch_agent(launch_agent_path)
+
+
+def load_launch_agent(launch_agent_path: Path):
+    try:
+        subprocess.run(["launchctl", "unload", launch_agent_path])
+        logger.info("Unloaded launch agent")
+
+        subprocess.run(["launchctl", "unload", launch_agent_path], check=True)
+        logger.info("Unloaded launch agent")
+    except subprocess.CalledProcessError:
+        logger.error("Failed to load launch agent")
+        raise
 
 
 def eject_sd_card(sd_card_path: Path) -> None:
