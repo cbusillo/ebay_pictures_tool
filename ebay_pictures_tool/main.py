@@ -107,15 +107,20 @@ def install_launch_agent():
 
 def load_launch_agent(launch_agent_path: Path):
     try:
-        uid = subprocess.check_output(["id", "-u"]).decode('utf-8').strip()
-        domain = f"gui/{uid}"
-        subprocess.run(["sudo", "launchctl", "bootout", domain, launch_agent_path], check=False)
-        logger.info("Unloaded launch agent")
-        time.sleep(2)
-        subprocess.run(["sudo", "launchctl", "bootstrap", domain, launch_agent_path], check=True)
-        logger.info("Loaded launch agent")
+        logger.info("Attempting to unload launch agent...")
+        subprocess.run(["launchctl", "unload", launch_agent_path], check=True)
+        logger.info("Successfully unloaded launch agent.")
     except subprocess.CalledProcessError:
-        logger.error("Failed to load launch agent")
+        logger.error("Failed to unload launch agent.")
+
+    time.sleep(2)
+
+    try:
+        logger.info("Attempting to load launch agent...")
+        subprocess.run(["launchctl", "load", launch_agent_path], check=True)
+        logger.info("Successfully loaded launch agent.")
+    except subprocess.CalledProcessError:
+        logger.error("Failed to load launch agent.")
         raise
 
 
