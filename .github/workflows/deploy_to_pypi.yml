@@ -7,7 +7,7 @@ on:
 
 jobs:
   bump-version:
-    if: github.actor != 'github-actions[bot]'
+    if: github.actor != 'cbusillo'
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code (full)
@@ -63,7 +63,7 @@ jobs:
 
 
   deploy:
-    if: github.actor != 'github-actions[bot]'
+    if: github.actor != 'cbusillo'
     needs: bump-version
     runs-on: ubuntu-latest
     steps:
