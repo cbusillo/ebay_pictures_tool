@@ -33,11 +33,9 @@ jobs:
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
-        github_token: ${{ env.GH_PAT }}
+        github_token: ${{ secrets.GH_PAT }}
         github_url: https://github.com
         directory: .
-      env:
-        GH_PAT: ${{ secrets.GH_PAT }}
 
 
   deploy:
