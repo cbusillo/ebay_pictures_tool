@@ -30,6 +30,14 @@ jobs:
     - name: Bump version
       run: bump2version patch
 
+    - name: Print GH_PAT length and hash
+      run: |
+        echo "Length of GH_PAT: ${#GH_PAT}"
+        echo "Hash of GH_PAT: $(echo -n $GH_PAT | sha256sum)"
+      env:
+        GH_PAT: ${{ secrets.GH_PAT }}
+
+
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
