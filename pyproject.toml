@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ebay_pictures_tool"
+version = "0.0.2"
+authors = [
+  { name="Chris Busillo", email="cbusillo@gmail.com" },
+]
+description = "An efficient tool for processing ebay images. "
+readme = "readme.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: MacOS :: MacOS X",
+]
+
+[tool.poetry.scripts]
+ebay_pictures_tool = "ebay_pictures_tool.main:main"
