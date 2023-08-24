@@ -19,14 +19,15 @@ from PIL import Image, ImageChops, ImageDraw
 from pyzbar.pyzbar import decode
 from rembg.bg import remove, new_session
 
+IS_TESTING = os.environ.get("TESTING_MODE", "").lower() in ["true", "1"]
+
 # Defaults
 SD_CARD_PATH = Path("/Volumes/EOS_DIGITAL")
-# SD_CARD_PATH = Path.home() /"Desktop/Input files"
+if IS_TESTING:
+    SD_CARD_PATH = Path.home() / "Desktop" / "Input"
 OUTPUT_PATH = Path.home() / "Desktop/eBay Pics"
 TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "Trimmed"
 NB_OUTPUT_PATH = OUTPUT_PATH / "NB"
-
-IS_TESTING = os.environ.get("TESTING_MODE", "").lower() in ["true", "1"]
 
 PHOTO_EXTENSIONS = ["JPG", "jpg", "CR2", "cr2", "PNG", "png", "JPEG", "jpeg"]
 RGB = tuple[int, int, int]
@@ -74,7 +75,7 @@ def install_launch_agent():
         logger.info(f"Installing launch agent at {launch_agent_path}")
         shutil.copy(plist_file_path, launch_agent_path)
 
-    with open(plist_file_path, "rb") as file:
+    with open(launch_agent_path, "rb") as file:
         file.seek(0)
         plist_data = plistlib.load(file)
 
