@@ -12,5 +12,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Print hashed GH_PAT
-      run: echo "${{ secrets.GH_PAT }}" | shasum -a 256
+    - name: Debugging PAT
+      run: |
+        echo "Token length: ${#GH_PAT}"
+        echo $(echo -n "$GH_PAT" | sha256sum)
+      env:
+        GH_PAT: ${{ secrets.GH_PAT }}
