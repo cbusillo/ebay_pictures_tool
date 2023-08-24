@@ -3,16 +3,15 @@
 <plist version="1.0">
     <dict>
         <key>Label</key>
-        <string>com.my.sdcardlistener</string>
+        <string>com.shiny.sdcardlistener</string>
         <key>ProgramArguments</key>
         <array>
-            <string>/Users/cbusillo/PycharmProjects/ebay_pictures_tool/ebay_pictures_tool.sh</string>
+            <string>/install_location/ebay_pictures_tool/ebay_pictures_tool.sh</string>
         </array>
         <key>QueueDirectories</key>
         <array>
             <string>/Volumes/EOS_DIGITAL</string>
         </array>
-        <key>WatchPaths</key>
         <key>RunAtLoad</key>
         <true/>
     </dict>

@@ -3,6 +3,7 @@
 import argparse
 import logging
 import os
+import plistlib
 import re
 import json
 import shutil
@@ -55,6 +56,33 @@ ODOO_URL = secrets.get("odoo_url", "")
 ODOO_DB = secrets.get("odoo_db", "")
 ODOO_USERNAME = secrets.get("odoo_username", "")
 ODOO_PASSWORD = secrets.get("odoo_password", "")
+
+
+def install_launch_agent():
+    home = Path.home()
+    launch_agent_dir = home / "Library" / "LaunchAgents"
+    # noinspection SpellCheckingInspection
+    launch_agent_name = "com.shiny.sdcardlistener.plist"
+    launch_agent_path = launch_agent_dir / launch_agent_name
+
+    root_project_dir = Path(__file__).parent.parent
+    plist_file_path = root_project_dir / launch_agent_name
+
+    if not launch_agent_path.exists():
+        logger.info(f"Installing launch agent at {launch_agent_path}")
+        shutil.copy(plist_file_path, launch_agent_path)
+
+    with open(plist_file_path, "rb") as file:
+        print(file.read())
+        file.seek(0)
+        plist_data = plistlib.load(file)
+
+    correct_path = str(root_project_dir / "ebay_pictures_tool.sh")
+    if plist_data["ProgramArguments"][0] != correct_path:
+        logger.info(f"Updating launch agent path to {correct_path}")
+        plist_data["ProgramArguments"][0] = correct_path
+        with launch_agent_path.open("wb") as file:
+            plistlib.dump(plist_data, file)
 
 
 def eject_sd_card(sd_card_path: Path) -> None:
@@ -354,6 +382,7 @@ def add_odoo_product_image(url, db, username, password, product_sku, image: Imag
 
 
 def main() -> None:
+    install_launch_agent()
     args = get_args()
     sd_card_path = Path(args.sd_card_path)
     output_path = Path(args.output_path)
