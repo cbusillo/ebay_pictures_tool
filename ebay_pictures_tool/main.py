@@ -199,15 +199,16 @@ def process_image(
     original_image = Image.open(original_image_file_path)
 
     qr_data, original_image = decode_and_remove_qr_label(original_image)
+    output_file_name = original_image_file_path.stem
     if qr_data:
+        output_file_name = qr_data
         logger.info(f"Found QR code with data: {qr_data}")
     else:
-        qr_data = original_image_file_path.stem
         logger.warning("No QR code found, using original filename.")
 
     logger.info(f"Removing background from {original_image_file_path.name}")
 
-    cleaned_image_file_path = generate_unique_filename(nb_output_path, qr_data + ".png")
+    cleaned_image_file_path = generate_unique_filename(nb_output_path, output_file_name + ".png")
 
     session = new_session(model_name)
     cleaned_image = remove(original_image, session=session)
@@ -215,14 +216,14 @@ def process_image(
     logger.info(f"Writing {cleaned_image_file_path.name}")
 
     trimmed_image = trim_image(cleaned_image)
-    trimmed_image_file_path = generate_unique_filename(trimmed_output_path, qr_data + ".png")
+    trimmed_image_file_path = generate_unique_filename(trimmed_output_path, output_file_name + ".png")
     logger.info(f"Trimmed {trimmed_image_file_path.name}")
 
     trimmed_image_with_bg = add_background_color(trimmed_image, background_color)
     trimmed_image_with_bg.save(trimmed_image_file_path, format="PNG")
     original_image.close()
-    if ODOO_DB:
-        add_image_to_odoo(qr_data, trimmed_image_with_bg)
+    if ODOO_DB and qr_data:
+        add_image_to_odoo(output_file_name, trimmed_image_with_bg)
 
 
 def trim_image(image: Image) -> Image:
