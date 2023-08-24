@@ -1,4 +1,4 @@
-name: Bump version and Deploy to PyPI
+name: Test GH_PAT Secret
 
 on:
   push:
@@ -6,54 +6,11 @@ on:
       - main
 
 jobs:
-  bump-version:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code (full)
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.11'
-
-    - name: Configure git user
-      run: |
-        git config user.name "GitHub Actions Bot"
-        git config user.email "actions@github.com"
-
-    - name: Install bump2version
-      run: pip install bump2version
-
-    - name: Bump version
-      run: bump2version patch
-
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GH_PAT }}
-        github_url: https://github.com
-        directory: .
-
-
-  deploy:
-    needs: bump-version
+  test-secret:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.11'
-
-    - name: Install poetry
-      run: pip install poetry
-
-    - name: Build and publish
-      run: |
-        poetry build
-        poetry publish --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }}
+    - name: Print hashed GH_PAT
+      run: echo "${{ secrets.GH_PAT }}" | sha256sum
