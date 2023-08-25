@@ -70,9 +70,7 @@ behavior, as detailed below.
     ```
     ebay_pictures_tool
     ```
-
    This will execute the tool with its default settings.
-
 
 2. **Arguments**:
 
