@@ -20,12 +20,13 @@ from PIL import Image, ImageChops, ImageDraw
 from pyzbar.pyzbar import decode
 from rembg.bg import remove, new_session
 
-IS_TESTING = os.environ.get("TESTING_MODE", "").lower() in ["true", "1"]
+IS_TESTING = os.environ.get("IS_TESTING", "").lower() in ["true", "1"]
+LEAVE_IMAGES = os.environ.get("LEAVE_IMAGES", "").lower() in ["true", "1"]
 
 # Defaults
 SD_CARD_PATH = Path("/Volumes/EOS_DIGITAL")
 if IS_TESTING:
-    SD_CARD_PATH = Path.home() / "Desktop" / "Input"
+    SD_CARD_PATH = Path.home() / "Pictures" / "Canon"
 OUTPUT_PATH = Path.home() / "Desktop/eBay Pics"
 TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "Trimmed"
 NB_OUTPUT_PATH = OUTPUT_PATH / "NB"
@@ -96,36 +97,19 @@ def install_launch_agent():
     with open(launch_agent_path, "rb") as file:
         plist_data = plistlib.load(file)
 
-    correct_path = get_brew_path() / "ebay_pictures_tool"
-    if plist_data["ProgramArguments"][0] != correct_path.as_posix():
-        logger.info(f"Updating launch agent path to {correct_path}")
-        plist_data["ProgramArguments"][0] = correct_path.as_posix()
+    correct_script_path = get_brew_path() / "ebay_pictures_tool"
+    if plist_data["ProgramArguments"][0] != correct_script_path.as_posix():
+        logger.info(f"Updating launch agent path to {correct_script_path}")
+        plist_data["ProgramArguments"][0] = correct_script_path.as_posix()
         with launch_agent_path.open("wb") as file:
             plistlib.dump(plist_data, file)
-        load_launch_agent(launch_agent_path)
 
-
-def load_launch_agent(launch_agent_path: Path):
-    uid = subprocess.check_output(["id", "-u"]).decode('utf-8').strip()
-    domain = f"gui/{uid}"
-    try:
-        logger.info("Attempting to unload launch agent...")
-
-        subprocess.run(["sudo", "launchctl", "bootout", domain, launch_agent_path])
-
-        logger.info("Successfully unloaded launch agent.")
-    except subprocess.CalledProcessError:
-        logger.error("Failed to unload launch agent.")
-
-    time.sleep(2)
-
-    try:
-        logger.info("Attempting to load launch agent...")
-        subprocess.run(["sudo", "launchctl", "bootstrap", domain, launch_agent_path], check=True)
-        logger.info("Successfully loaded launch agent.")
-    except subprocess.CalledProcessError:
-        logger.error("Failed to load launch agent.")
-        raise
+    correct_input_path = str(SD_CARD_PATH)
+    if plist_data["QueueDirectories"][0] != correct_input_path:
+        logger.info(f"Updating input path to {correct_input_path}")
+        plist_data["QueueDirectories"][0] = correct_input_path
+        with launch_agent_path.open("wb") as file:
+            plistlib.dump(plist_data, file)
 
 
 def eject_sd_card(sd_card_path: Path) -> None:
@@ -160,7 +144,7 @@ def copy_images_from_sd_card(sd_card_path: Path, output_path: Path) -> list[Path
             shutil.copy(source_file, destination_file)
             logger.info(f"Processed {source_file.name}")
             files_to_process.append(destination_file)
-            if not IS_TESTING:
+            if not LEAVE_IMAGES:
                 source_file.unlink()
     return files_to_process
 
@@ -332,8 +316,15 @@ def get_args() -> argparse.Namespace:
         "--model_name",
         type=str,
         default="isnet-general-use",
-        help="Model name to use for background removal",
+        help="""Model name to use for background removal. Available options:
+          - 'isnet-general-use': This model is optimal for cleanly cutting out the primary object, 
+                                 but it will remove everything except the main subject.
+          - 'u2net': This model doesn't cut as cleanly as 'isnet-general-use', 
+                     but retains smaller parts in the pictures, such as screws or other minor details.
+          - 'auto': This will automatically select the best model based on the number of objects in the image.
+        Default is 'auto'.""",
     )
+
     return parser.parse_args()
 
 
