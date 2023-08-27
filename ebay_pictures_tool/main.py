@@ -336,7 +336,6 @@ def process_image(
         trimmed_image.save(trimmed_image_file_path, format="PNG")
         logger.info(f"Writing NB trimmed {nb_trimmed_image_file_path.name}")
 
-        # show_image(nb_trimmed_image_file_path)
     if ODOO_DB and qr_data:
         add_image_to_odoo(output_file_name, nb_trimmed_image)
 
