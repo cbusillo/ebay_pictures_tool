@@ -156,6 +156,37 @@ def install_launch_agent() -> None:
         restart_launch_agent(launch_agent_path)
 
 
+def get_mount_point(input_path: Path) -> Path:
+    current_path = input_path
+    while not current_path.is_mount():
+        current_path = current_path.parent
+    return current_path
+
+
+def is_external_drive(path_to_test: Path) -> bool:
+    try:
+        mount_output = subprocess.check_output(["mount", "-v"]).decode('utf-8')
+        mount_lines = mount_output.splitlines()
+        for line in mount_lines:
+            if path_to_test.as_posix() in line:
+                return 'external' in line
+    except subprocess.CalledProcessError as error:
+        logging.info(f"Failed to get mount points: {error.output}")
+    return False
+
+
+def is_ejectable_drive(path_to_test: Path) -> bool:
+    try:
+        mount_output = subprocess.check_output(["diskutil", "info", path_to_test]).decode('utf-8')
+        mount_lines = mount_output.splitlines()
+        for line in mount_lines:
+            if "Ejectable:" in line:
+                return "Yes" in line.strip().split()[-1]
+    except subprocess.CalledProcessError as error:
+        logging.info(f"Failed to get diskutil info: {error.output}")
+    return False
+
+
 def eject_sd_card(sd_card_path: Path) -> None:
     try:
         subprocess.run(["diskutil", "eject", sd_card_path])
