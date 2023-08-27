@@ -359,7 +359,7 @@ def trim_image(image: Image) -> tuple[Image, tuple[int, int, int, int] | None]:
     return image, None  # Return original image and None if no changes detected
 
 
-def add_background_color(image: Image, color: RGB = (255, 255, 255)) -> Image:
+def add_background_color(image: Image, color: RGB) -> Image:
     if image.mode in ("RGBA", "LA"):
         background = Image.new(image.mode[:-1], image.size, color)
         background.paste(image, image.split()[-1])
@@ -417,10 +417,10 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "-b",
         "--background_color",
-        type=parse_rgb,
-        default=Color("white").rgb,
+        type=str,
+        default=BACKGROUND_COLOR,
         help=("Background color to add to trimmed images in W3C color naming.  https://www.w3.org/TR/css-color-3/#svg-color"
-              f"Default is {BACKGROUND_COLOR} {Color('white').rgb}."),
+              f"Default is {BACKGROUND_COLOR}."),
     )
     # noinspection SpellCheckingInspection
     parser.add_argument(
@@ -438,19 +438,6 @@ def get_args() -> argparse.Namespace:
     )
 
     return parser.parse_args()
-
-
-def parse_rgb(color_string: str) -> RGB:
-    try:
-        r, g, b = map(int, color_string.strip("()").split(","))
-        if 0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255:
-            return r, g, b
-        else:
-            raise ValueError
-    except ValueError:
-        raise argparse.ArgumentTypeError(
-            f"Invalid color format: {color_string}. Expected format: (R,G,B) with each value between 0 and 255."
-        )
 
 
 def add_odoo_product_image(url, db, username, password, product_sku, image: Image):
@@ -510,6 +497,16 @@ def main() -> None:
         nb_trimmed_output_path = Path(args.nb_trimmed_output_path)
         nb_output_path = Path(args.nb_output_path)
 
+    try:
+        background_color = COLOR_NAME_TO_RGB[args.background_color]
+    except AttributeError:
+        logger.error(f"Invalid background color: {args.background_color}")
+        return
+
+    if args.model_name not in ["isnet-general-use", "u2net", "auto"]:
+        logger.error(f"Invalid model name: {args.model_name}")
+        return
+
     if create_directories(
             [original_output_path, trimmed_output_path, nb_output_path, nb_trimmed_output_path]
     ):
@@ -522,7 +519,7 @@ def main() -> None:
             trimmed_output_path,
             nb_trimmed_output_path,
             args.model_name,
-            args.background_color,
+            background_color,
         )
 
 
