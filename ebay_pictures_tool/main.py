@@ -13,15 +13,11 @@ import xmlrpc.client
 from io import BytesIO
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-from tkinter import Tk, Label
 
 import numpy
-from PIL import Image, ImageChops, ImageDraw, ImageTk
+from PIL import Image, ImageChops, ImageDraw
 from pyzbar.pyzbar import decode
 from rembg.bg import remove, new_session
-from skimage.filters import threshold_otsu, gaussian
-from skimage.measure import regionprops
-from skimage.morphology import label, closing, square
 
 IS_TESTING = os.environ.get("IS_TESTING", "").lower() in ["true", "1"]
 LEAVE_IMAGES = os.environ.get("LEAVE_IMAGES", "").lower() in ["true", "1"]
@@ -282,25 +278,43 @@ def process_image(
     cleaned_image.save(cleaned_image_file_path)
     logger.info(f"Writing {cleaned_image_file_path.name}")
 
-    trimmed_image = trim_image(cleaned_image)
-    trimmed_image_file_path = generate_unique_filename(trimmed_output_path, output_file_name + ".png")
-    logger.info(f"Trimmed {trimmed_image_file_path.name}")
+    nb_trimmed_image, crop_box = trim_image(cleaned_image)
 
-    trimmed_image_with_bg = add_background_color(trimmed_image, background_color)
-    trimmed_image_with_bg.save(trimmed_image_file_path, format="PNG")
-    original_image.close()
+    if crop_box:  # Only process if a bounding box was returned
+        nb_trimmed_image_with_bg = add_background_color(nb_trimmed_image, background_color)
+        nb_trimmed_image_file_path = generate_unique_filename(nb_trimmed_output_path, output_file_name + ".png")
+
+        logger.info(f"Trimmed {nb_trimmed_image_file_path.name}")
+        nb_trimmed_image_with_bg.save(nb_trimmed_image_file_path, format="PNG")
+
+        # Use the returned crop_box to crop the original image
+        trimmed_image = original_image.crop(crop_box)
+        trimmed_image_file_path = generate_unique_filename(trimmed_output_path, output_file_name + ".png")
+
+        trimmed_image.save(trimmed_image_file_path, format="PNG")
+        logger.info(f"Writing NB trimmed {nb_trimmed_image_file_path.name}")
+
+        # show_image(nb_trimmed_image_file_path)
     if ODOO_DB and qr_data:
-        add_image_to_odoo(output_file_name, trimmed_image_with_bg)
+        add_image_to_odoo(output_file_name, nb_trimmed_image)
 
 
-def trim_image(image: Image) -> Image:
+def trim_image(image: Image) -> tuple[Image, tuple[int, int, int, int] | None]:
+    buffer_size = 100
     background = Image.new(image.mode, image.size, image.getpixel((0, 0)))
     diff = ImageChops.difference(image, background)
     diff = ImageChops.add(diff, diff, 2.0, -100)
-    cropped_image = diff.getbbox()
-    if cropped_image:
-        return image.crop(cropped_image)
-    return image  # Return original image if no changes detected
+    cropped_image_box = diff.getbbox()
+    if cropped_image_box:
+        # Add buffer to the bounding box
+        buffered_box = (
+            max(0, cropped_image_box[0] - buffer_size),  # left
+            max(0, cropped_image_box[1] - buffer_size),  # upper
+            min(image.width, cropped_image_box[2] + buffer_size),  # right
+            min(image.height, cropped_image_box[3] + buffer_size)  # lower
+        )
+        return image.crop(buffered_box), buffered_box
+    return image, None  # Return original image and None if no changes detected
 
 
 def add_background_color(image: Image, color: RGB = (255, 255, 255)) -> Image:
