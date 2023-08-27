@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy
 from PIL import Image, ImageChops, ImageDraw
+from colour import Color
 from pyzbar.pyzbar import decode
 from rembg.bg import remove, new_session
 
@@ -367,8 +368,9 @@ def get_args() -> argparse.Namespace:
         "-b",
         "--background_color",
         type=parse_rgb,
-        default=(255, 255, 255),
-        help="Background color to add to trimmed images in (R,G,B) format",
+        default=Color("white").rgb,
+        help=("Background color to add to trimmed images in W3C color naming.  https://www.w3.org/TR/css-color-3/#svg-color"
+              f"Default is {BACKGROUND_COLOR} {Color('white').rgb}."),
     )
     # noinspection SpellCheckingInspection
     parser.add_argument(

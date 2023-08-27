@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "ebay_pictures_tool"
-version = "0.0.81"
+version = "0.0.82"
 authors = ["Chris Busillo <cbusillo@gmail.com>"]
 description = "An efficient tool for processing ebay images."
 readme = "README.md"
@@ -17,6 +17,7 @@ numba = "^0.57.1"
 rembg = "^2.0.50"
 opencv-python = "^4.8.0.76"
 pyzbar = "^0.1.9"
+colour = "^0.1.5"
 
 [tool.poetry.group.dev.dependencies]
 build = "^0.10.0"
