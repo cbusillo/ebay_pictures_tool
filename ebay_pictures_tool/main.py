@@ -20,18 +20,22 @@ from colour import Color
 from pyzbar.pyzbar import decode
 from rembg.bg import remove, new_session
 
+# Debug settings
 IS_TESTING = os.environ.get("IS_TESTING", "").lower() in ["true", "1"]
 LEAVE_IMAGES = os.environ.get("LEAVE_IMAGES", "").lower() in ["true", "1"]
 
 # Defaults
-SD_CARD_PATH = Path("/Volumes/EOS_DIGITAL")
+INPUT_PATH = Path("/Volumes/EOS_DIGITAL")
 if IS_TESTING:
-    SD_CARD_PATH = Path.home() / "Pictures" / "Canon"
-OUTPUT_PATH = Path.home() / "Desktop/eBay Pics"
-ORIGINAL_OUTPUT_PATH = OUTPUT_PATH / "Original"
-NB_TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "NB_Trimmed"
-NB_OUTPUT_PATH = OUTPUT_PATH / "NB"
-TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "Trimmed"
+    INPUT_PATH = Path.home() / "Pictures" / "Canon"
+ROOT_OUTPUT_PATH = Path.home() / "Desktop/eBay Pics"
+ORIGINAL_OUTPUT_PATH = ROOT_OUTPUT_PATH / "Original"
+NB_TRIMMED_OUTPUT_PATH = ROOT_OUTPUT_PATH / "NB_Trimmed"
+NB_OUTPUT_PATH = ROOT_OUTPUT_PATH / "NB"
+TRIMMED_OUTPUT_PATH = ROOT_OUTPUT_PATH / "Trimmed"
+# noinspection SpellCheckingInspection
+MODEL_NAME = "isnet-general-use"
+BACKGROUND_COLOR = 'white'
 
 PHOTO_EXTENSIONS = ["JPG", "jpg", "CR2", "cr2", "PNG", "png", "JPEG", "jpeg"]
 RGB = tuple[int, int, int]
@@ -134,7 +138,7 @@ def install_launch_agent():
         logger.info(f"Updating launch agent path to {correct_script_path}")
         plist_data["ProgramArguments"][0] = correct_script_path.as_posix()
 
-    correct_input_path = str(SD_CARD_PATH)
+    correct_input_path = str(INPUT_PATH)
     if plist_data["QueueDirectories"][0] != correct_input_path:
         if "EnvironmentVariables" not in plist_data:
             plist_data["EnvironmentVariables"] = {}
@@ -328,41 +332,50 @@ def add_background_color(image: Image, color: RGB = (255, 255, 255)) -> Image:
 
 
 def get_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Process images from SD card")
+    parser = argparse.ArgumentParser(description="Process images from folder")
     parser.add_argument(
-        "-s",
-        "--sd_card_path",
+        "-i",
+        "--input_path",
         type=str,
-        default=str(SD_CARD_PATH),
-        help="Path to SD card",
+        default=str(INPUT_PATH),
+        help=("Path to input folder.  If this folder is on an external drive, it will be automatically ejected.  Default value of "
+              f"{INPUT_PATH}, if not provided."),
     )
     parser.add_argument(
         "-o",
+        "--output_path",
+        type=str,
+        default=str(ROOT_OUTPUT_PATH),
+        help=("Path to root output folder.   "
+              f"{ROOT_OUTPUT_PATH}, if not provided."),
+    )
+    parser.add_argument(
+        "-oo",
         "--original_output_path",
         type=str,
         default=str(ORIGINAL_OUTPUT_PATH),
-        help="Path to output directory",
+        help=f"Path to original output directory.  If not provided, defaults to {ORIGINAL_OUTPUT_PATH}",
     )
     parser.add_argument(
         "-nt",
         "--nb_trimmed_output_path",
         type=str,
         default=str(NB_TRIMMED_OUTPUT_PATH),
-        help="Path to trimmed output directory",
+        help=f"Path to trimmed output directory.  If not provided, defaults to {NB_TRIMMED_OUTPUT_PATH}",
     )
     parser.add_argument(
         "-n",
         "--nb_output_path",
         type=str,
         default=str(NB_OUTPUT_PATH),
-        help="Path to no background output directory",
+        help=f"Path to no background output directory.  If not provided, defaults to {NB_OUTPUT_PATH}",
     )
     parser.add_argument(
         "-t",
         "--trimmed_output_path",
         type=str,
         default=str(TRIMMED_OUTPUT_PATH),
-        help="Path to trimmed output directory",
+        help="Path to trimmed output directory.  If not provided, defaults to {TRIMMED_OUTPUT_PATH}",
     )
     parser.add_argument(
         "-b",
@@ -377,14 +390,14 @@ def get_args() -> argparse.Namespace:
         "-m",
         "--model_name",
         type=str,
-        default="isnet-general-use",
-        help="""Model name to use for background removal. Available options:
+        default=MODEL_NAME,
+        help=f"""Model name to use for background removal. Available options:
           - 'isnet-general-use': This model is optimal for cleanly cutting out the primary object, 
                                  but it will remove everything except the main subject.
           - 'u2net': This model doesn't cut as cleanly as 'isnet-general-use', 
                      but retains smaller parts in the pictures, such as screws or other minor details.
           - 'auto': This will automatically select the best model based on the number of objects in the image.
-        Default is 'auto'.""",
+        Default is '{MODEL_NAME}'.""",
     )
 
     return parser.parse_args()
@@ -443,20 +456,29 @@ def add_odoo_product_image(url, db, username, password, product_sku, image: Imag
 def main() -> None:
     install_launch_agent()
     args = get_args()
-    sd_card_path = Path(args.sd_card_path)
-    original_output_path = Path(args.original_output_path)
-    trimmed_output_path = Path(args.trimmed_output_path)
-    nb_trimmed_output_path = Path(args.nb_trimmed_output_path)
-    nb_output_path = Path(args.nb_output_path)
-    if not sd_card_path.exists():
-        logger.error(f"SD card not found at {sd_card_path}")
+    input_path = Path(args.input_path)
+    if not input_path.exists():
+        logger.error(f"SD card not found at {input_path}")
         return
+
+    root_output_path = Path(args.output_path)
+    if root_output_path:
+        original_output_path = root_output_path / "Original"
+        trimmed_output_path = root_output_path / "Trimmed"
+        nb_trimmed_output_path = root_output_path / "NB_Trimmed"
+        nb_output_path = root_output_path / "NB"
+    else:
+        original_output_path = Path(args.original_output_path)
+        trimmed_output_path = Path(args.trimmed_output_path)
+        nb_trimmed_output_path = Path(args.nb_trimmed_output_path)
+        nb_output_path = Path(args.nb_output_path)
 
     if create_directories(
             [original_output_path, trimmed_output_path, nb_output_path, nb_trimmed_output_path]
     ):
-        copied_files = copy_images_from_sd_card(sd_card_path, original_output_path)
-        eject_sd_card(sd_card_path)
+        copied_files = copy_images_from_sd_card(input_path, original_output_path)
+        if is_ejectable_drive(input_path) and is_external_drive(input_path):
+            eject_sd_card(input_path)
         process_images(
             copied_files,
             nb_output_path,
