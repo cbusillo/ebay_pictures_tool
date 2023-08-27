@@ -117,7 +117,7 @@ def install_launch_agent() -> None:
     home = Path.home()
     launch_agent_dir = home / "Library" / "LaunchAgents"
     # noinspection SpellCheckingInspection
-    launch_agent_name = "com.shiny.sdcardlistener.plist"
+    launch_agent_name = "com.shiny.sdcard-listener.plist"
     launch_agent_path = launch_agent_dir / launch_agent_name
 
     root_project_dir = Path(__file__).parent
