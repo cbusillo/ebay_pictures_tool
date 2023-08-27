@@ -374,7 +374,7 @@ def get_args() -> argparse.Namespace:
         "-i",
         "--input_path",
         type=str,
-        default=str(INPUT_PATH),
+        default=INPUT_PATH.as_posix(),
         help=("Path to input folder.  If this folder is on an external drive, it will be automatically ejected.  Default value of "
               f"{INPUT_PATH}, if not provided."),
     )
@@ -382,7 +382,7 @@ def get_args() -> argparse.Namespace:
         "-o",
         "--output_path",
         type=str,
-        default=str(ROOT_OUTPUT_PATH),
+        default=ROOT_OUTPUT_PATH.as_posix(),
         help=("Path to root output folder.   "
               f"{ROOT_OUTPUT_PATH}, if not provided."),
     )
@@ -390,29 +390,29 @@ def get_args() -> argparse.Namespace:
         "-oo",
         "--original_output_path",
         type=str,
-        default=str(ORIGINAL_OUTPUT_PATH),
-        help=f"Path to original output directory.  If not provided, defaults to {ORIGINAL_OUTPUT_PATH}",
+        default=ORIGINAL_OUTPUT_PATH.as_posix(),
+        help=f"Path to original output folder.  If not provided, defaults to {ORIGINAL_OUTPUT_PATH}",
     )
     parser.add_argument(
         "-nt",
         "--nb_trimmed_output_path",
         type=str,
-        default=str(NB_TRIMMED_OUTPUT_PATH),
-        help=f"Path to trimmed output directory.  If not provided, defaults to {NB_TRIMMED_OUTPUT_PATH}",
+        default=NB_TRIMMED_OUTPUT_PATH.as_posix(),
+        help=f"Path to trimmed output folder.  If not provided, defaults to {NB_TRIMMED_OUTPUT_PATH}",
     )
     parser.add_argument(
         "-n",
         "--nb_output_path",
         type=str,
-        default=str(NB_OUTPUT_PATH),
-        help=f"Path to no background output directory.  If not provided, defaults to {NB_OUTPUT_PATH}",
+        default=NB_OUTPUT_PATH.as_posix(),
+        help=f"Path to no background output folder.  If not provided, defaults to {NB_OUTPUT_PATH}",
     )
     parser.add_argument(
         "-t",
         "--trimmed_output_path",
         type=str,
-        default=str(TRIMMED_OUTPUT_PATH),
-        help="Path to trimmed output directory.  If not provided, defaults to {TRIMMED_OUTPUT_PATH}",
+        default=TRIMMED_OUTPUT_PATH.as_posix(),
+        help="Path to trimmed output folder.  If not provided, defaults to {TRIMMED_OUTPUT_PATH}",
     )
     parser.add_argument(
         "-b",
