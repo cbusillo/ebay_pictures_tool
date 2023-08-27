@@ -11,14 +11,25 @@ import shutil
 import subprocess
 import xmlrpc.client
 from io import BytesIO
-from multiprocessing import Pool, cpu_count
 from pathlib import Path
 
 import numpy
 from PIL import Image, ImageChops, ImageDraw
-from colour import Color
+from colour import COLOR_NAME_TO_RGB
 from pyzbar.pyzbar import decode
 from rembg.bg import remove, new_session
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler("/tmp/ebay_pictures_tool.log")
+file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+file_handler.setFormatter(file_formatter)
+logger.addHandler(file_handler)
+
+console_handler = logging.StreamHandler()
+console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+console_handler.setFormatter(console_formatter)
+logger.addHandler(console_handler)
 
 # Debug settings
 IS_TESTING = os.environ.get("IS_TESTING", "").lower() in ["true", "1"]
