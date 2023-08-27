@@ -192,13 +192,12 @@ def process_images(
         model_name,
         background_color,
 ) -> None:
-    chunk_size = max(1, len(files_to_process) // (cpu_count() * 4))
     args = [
         (file_path, nb_output_path, trimmed_output_path, nb_trimmed_output_path, model_name, background_color)
         for file_path in files_to_process
     ]
     with Pool(cpu_count()) as pool:
-        pool.starmap(process_image, args, chunksize=chunk_size)
+        pool.starmap(process_image, args)
 
 
 def sanitize_filename(filename: str) -> str:
@@ -251,6 +250,106 @@ def add_image_to_odoo(sku: str, image: Image) -> None:
         add_odoo_product_image(ODOO_URL, ODOO_DB, ODOO_USERNAME, ODOO_PASSWORD, sku, image)
     else:
         logger.warning(f"Record not found for SKU: {sku}")
+
+
+def count_objects_in_image(image: Image.Image) -> int:
+    """Count the number of objects in an image using basic thresholding and labeling."""
+
+    # Convert the image to grayscale and normalize to [0, 1]
+    grayscale_image = numpy.array(image.convert("L")) / 255.0
+
+    # Apply Gaussian blur to reduce noise
+    smoothed_image = gaussian(grayscale_image, sigma=3)
+
+    # Thresholding
+    thresh = threshold_otsu(smoothed_image)
+    binary_image = smoothed_image > thresh
+
+    # Morphological closing
+    closed_image = closing(binary_image, square(7))
+
+    # Label the connected components (objects)
+    labeled_image, num_objects = label(closed_image, return_num=True)
+
+    # Remove small objects
+    min_object_area = 1000  # You can adjust this value
+    regions = regionprops(labeled_image)
+    large_regions_count = sum(1 for region in regions if region.area > min_object_area)
+
+    return large_regions_count
+
+
+def show_image(image_path: Path):
+    def rotate_image(angle):
+        nonlocal pil_img
+        pil_img = pil_img.rotate(angle, expand=True)
+        update_image()
+
+    def update_image():
+        nonlocal pil_img, img
+        img = ImageTk.PhotoImage(pil_img)
+        lbl.config(image=img)
+
+        target_width, target_height = pil_img.size
+        root.geometry(f"{target_width}x{target_height}+{x_position}+{y_position}")
+
+    def on_key_press(event):
+        if event.char == 'd':
+            image_path.unlink()
+        elif event.char == 'r':
+            rotate_image(90)  # rotates by 90 degrees
+        elif event.keysym == 'Left':
+            rotate_image(-1)  # rotates counter-clockwise by 3.6 degrees
+        elif event.keysym == 'Right':
+            rotate_image(1)  # rotates clockwise by 3.6 degrees
+        else:
+            root.destroy()
+
+    root = Tk()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+
+    # Open the image using PIL
+    pil_img = Image.open(image_path)
+
+    # Calculate target dimensions (20% of screen size)
+    max_width = int(screen_width * 0.4)
+    max_height = int(screen_height * 0.4)
+
+    # Calculate aspect ratio
+    original_width, original_height = pil_img.size
+    aspect_ratio = original_width / original_height
+
+    # Adjust target dimensions based on aspect ratio
+    if original_width > original_height:
+        # Landscape image
+        target_width = max_width
+        target_height = int(target_width / aspect_ratio)
+    else:
+        # Portrait image
+        target_height = max_height
+        target_width = int(target_height * aspect_ratio)
+
+    # Ensure the new dimensions don't exceed max values
+    target_width = min(max_width, target_width)
+    target_height = min(max_height, target_height)
+
+    # Resize the image while maintaining its aspect ratio
+    pil_img = pil_img.resize((target_width, target_height))
+
+    img = ImageTk.PhotoImage(pil_img)
+
+    lbl = Label(root, image=img)
+    lbl.pack()
+
+    # Adjust the window's position
+    x_position = screen_width - target_width
+    dock_height = 100
+    y_position = screen_height - target_height - dock_height
+
+    root.geometry(f"{target_width}x{target_height}+{x_position}+{y_position}")
+    root.bind("<KeyPress>", on_key_press)
+    root.mainloop()
 
 
 def process_image(
