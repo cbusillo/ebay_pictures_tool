@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import xmlrpc.client
 from io import BytesIO
+from multiprocessing import Pool, cpu_count
 from pathlib import Path
 
 import numpy
@@ -224,13 +225,18 @@ def process_images(
         model_name,
         background_color,
 ) -> None:
-    chunk_size = max(1, len(files_to_process) // (cpu_count() * 4))
     args = [
         (file_path, nb_output_path, trimmed_output_path, nb_trimmed_output_path, model_name, background_color)
         for file_path in files_to_process
     ]
-    with Pool(cpu_count()) as pool:
-        pool.starmap(process_image, args, chunksize=chunk_size)
+    if IS_TESTING:
+        for arg in args:
+            process_image(*arg)
+        return
+    else:
+        chunk_size = max(1, len(files_to_process) // (cpu_count() * 4))
+        with Pool(cpu_count()) as pool:
+            pool.starmap(process_image, args, chunksize=chunk_size)
 
 
 def sanitize_filename(filename: str) -> str:
