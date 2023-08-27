@@ -50,8 +50,6 @@ BACKGROUND_COLOR = 'white'
 
 PHOTO_EXTENSIONS = ["JPG", "jpg", "CR2", "cr2", "PNG", "png", "JPEG", "jpeg"]
 RGB = tuple[int, int, int]
-logging.basicConfig(level=logging.INFO, filename="/tmp/ebay_pictures_tool.log")
-logger = logging.getLogger(__name__)
 
 
 def load_secrets_from_file() -> dict[str, str]:
