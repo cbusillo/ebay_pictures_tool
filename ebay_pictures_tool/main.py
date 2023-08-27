@@ -113,7 +113,7 @@ def restart_launch_agent(launch_agent_path: Path):
         raise
 
 
-def install_launch_agent():
+def install_launch_agent() -> None:
     home = Path.home()
     launch_agent_dir = home / "Library" / "LaunchAgents"
     # noinspection SpellCheckingInspection
