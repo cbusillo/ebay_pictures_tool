@@ -126,7 +126,7 @@ def install_launch_agent() -> None:
     home = Path.home()
     launch_agent_dir = home / "Library" / "LaunchAgents"
     # noinspection SpellCheckingInspection
-    launch_agent_name = "com.shiny.sdcard-listener.plist"
+    launch_agent_name = "com.shiny.folder-listener.plist"
     launch_agent_path = launch_agent_dir / launch_agent_name
 
     root_project_dir = Path(__file__).parent
@@ -172,36 +172,27 @@ def get_mount_point(input_path: Path) -> Path:
     return current_path
 
 
-def is_external_drive(path_to_test: Path) -> bool:
-    try:
-        mount_output = subprocess.check_output(["mount", "-v"]).decode('utf-8')
-        mount_lines = mount_output.splitlines()
-        for line in mount_lines:
-            if path_to_test.as_posix() in line:
-                return 'external' in line
-    except subprocess.CalledProcessError as error:
-        logging.info(f"Failed to get mount points: {error.output}")
-    return False
-
-
 def is_ejectable_drive(path_to_test: Path) -> bool:
     try:
-        mount_output = subprocess.check_output(["diskutil", "info", path_to_test]).decode('utf-8')
+        mount_point_to_test = get_mount_point(path_to_test)
+        mount_output = subprocess.check_output(["diskutil", "info", mount_point_to_test]).decode('utf-8')
         mount_lines = mount_output.splitlines()
         for line in mount_lines:
-            if "Ejectable:" in line:
+            if "Ejectable:" in line:  # TODO: check if new macOS uses "Removable Media:"
                 return "Yes" in line.strip().split()[-1]
     except subprocess.CalledProcessError as error:
         logging.info(f"Failed to get diskutil info: {error.output}")
     return False
 
 
-def eject_sd_card(sd_card_path: Path) -> None:
+def eject_external_drive(path_to_eject: Path) -> bool:
     try:
-        subprocess.run(["diskutil", "eject", sd_card_path])
-        logger.info("Ejected SD card")
+        subprocess.run(["diskutil", "eject", path_to_eject])
+        logger.info("Ejected external drive")
+        return True
     except subprocess.CalledProcessError as error:
-        logger.error(f"Failed to eject SD card: {error}")
+        logger.error(f"Failed to eject external drive: {error}")
+        return False
 
 
 def create_directories(
@@ -212,10 +203,10 @@ def create_directories(
     return True
 
 
-def copy_images_from_sd_card(sd_card_path: Path, output_path: Path) -> list[Path]:
+def copy_images_from_input_folder(input_folder_path: Path, output_path: Path) -> list[Path]:
     files_to_process = []
     for ext in PHOTO_EXTENSIONS:
-        for source_file in sd_card_path.rglob(f"*.{ext}"):
+        for source_file in input_folder_path.rglob(f"*.{ext}"):
             destination_file = output_path / source_file.name
             shutil.copy(source_file, destination_file)
             logger.info(f"Processing {source_file.name}")
@@ -498,7 +489,7 @@ def main() -> None:
     args = get_args()
     input_path = Path(args.input_path)
     if not input_path.exists():
-        logger.error(f"SD card not found at {input_path}")
+        logger.error(f"Input folder not found at {input_path}")
         return
 
     root_output_path = Path(args.output_path)
@@ -508,7 +499,7 @@ def main() -> None:
         nb_trimmed_output_path = root_output_path / "NB_Trimmed"
         nb_output_path = root_output_path / "NB"
     else:
-        original_output_path = Path(args.original_output_path)
+        original_output_path = Path(args.original_output_path) if args.original_output_path else ORIGINAL_OUTPUT_PATH
         trimmed_output_path = Path(args.trimmed_output_path)
         nb_trimmed_output_path = Path(args.nb_trimmed_output_path)
         nb_output_path = Path(args.nb_output_path)
@@ -516,9 +507,9 @@ def main() -> None:
     if create_directories(
             [original_output_path, trimmed_output_path, nb_output_path, nb_trimmed_output_path]
     ):
-        copied_files = copy_images_from_sd_card(input_path, original_output_path)
-        if is_ejectable_drive(input_path) and is_external_drive(input_path):
-            eject_sd_card(input_path)
+        copied_files = copy_images_from_input_folder(input_path, original_output_path)
+        if is_ejectable_drive(input_path):
+            eject_external_drive(input_path)
         process_images(
             copied_files,
             nb_output_path,

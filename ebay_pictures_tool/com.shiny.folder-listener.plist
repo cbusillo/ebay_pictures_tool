@@ -3,7 +3,7 @@
 <plist>
     <dict>
         <key>Label</key>
-        <string>com.shiny.sdcard-listener</string>
+        <string>com.shiny.folder-listener</string>
         <key>ProgramArguments</key>
         <array>
             <string>/install_location/ebay_pictures_tool/ebay_pictures_tool.sh</string>
