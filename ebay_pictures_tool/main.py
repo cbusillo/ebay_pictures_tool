@@ -9,16 +9,19 @@ import plistlib
 import re
 import shutil
 import subprocess
-import time
 import xmlrpc.client
 from io import BytesIO
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
+from tkinter import Tk, Label
 
 import numpy
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageTk
 from pyzbar.pyzbar import decode
 from rembg.bg import remove, new_session
+from skimage.filters import threshold_otsu, gaussian
+from skimage.measure import regionprops
+from skimage.morphology import label, closing, square
 
 IS_TESTING = os.environ.get("IS_TESTING", "").lower() in ["true", "1"]
 LEAVE_IMAGES = os.environ.get("LEAVE_IMAGES", "").lower() in ["true", "1"]
@@ -28,12 +31,14 @@ SD_CARD_PATH = Path("/Volumes/EOS_DIGITAL")
 if IS_TESTING:
     SD_CARD_PATH = Path.home() / "Pictures" / "Canon"
 OUTPUT_PATH = Path.home() / "Desktop/eBay Pics"
-TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "Trimmed"
+ORIGINAL_OUTPUT_PATH = OUTPUT_PATH / "Original"
+NB_TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "NB_Trimmed"
 NB_OUTPUT_PATH = OUTPUT_PATH / "NB"
+TRIMMED_OUTPUT_PATH = OUTPUT_PATH / "Trimmed"
 
 PHOTO_EXTENSIONS = ["JPG", "jpg", "CR2", "cr2", "PNG", "png", "JPEG", "jpeg"]
 RGB = tuple[int, int, int]
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, filename="/tmp/ebay_pictures_tool.log")
 logger = logging.getLogger(__name__)
 
 
@@ -79,6 +84,34 @@ def get_brew_path() -> Path | None:
         raise ValueError(f"Unsupported architecture: {architecture}")
 
 
+def restart_launch_agent(launch_agent_path: Path):
+    try:
+        uid = subprocess.check_output(["id", "-u"]).decode('utf-8').strip()
+        domain = f"gui/{uid}"
+
+        logger.info(f"Stopping launch agent at {launch_agent_path.stem}")
+
+        # noinspection SpellCheckingInspection
+        command_to_run = ["launchctl", "bootout", f"{domain}/{launch_agent_path.stem}"]
+        subprocess.run(command_to_run)
+        logger.info(" ".join(command_to_run))
+
+        logger.info(f"Starting launch agent at {launch_agent_path.stem}")
+
+        command_to_run = ["launchctl", "bootstrap", domain, launch_agent_path.as_posix()]
+        subprocess.run(command_to_run)
+        logger.info(" ".join(command_to_run))
+
+        command_to_run = ["launchctl", "kickstart", "-k", f"{domain}/{launch_agent_path.stem}"]
+        subprocess.run(command_to_run)
+        logger.info(" ".join(command_to_run))
+
+        logger.info("Loaded launch agent")
+    except subprocess.CalledProcessError:
+        logger.error("Failed to load launch agent")
+        raise
+
+
 def install_launch_agent():
     home = Path.home()
     launch_agent_dir = home / "Library" / "LaunchAgents"
@@ -88,8 +121,9 @@ def install_launch_agent():
 
     root_project_dir = Path(__file__).parent
     plist_file_path = root_project_dir / launch_agent_name
-
+    is_changed = False
     if not launch_agent_path.exists():
+        is_changed = True
         logger.info(f"Installing launch agent at {launch_agent_path}")
         launch_agent_dir.mkdir(exist_ok=True)
         shutil.copy(plist_file_path, launch_agent_path)
@@ -99,17 +133,26 @@ def install_launch_agent():
 
     correct_script_path = get_brew_path() / "ebay_pictures_tool"
     if plist_data["ProgramArguments"][0] != correct_script_path.as_posix():
+        is_changed = True
         logger.info(f"Updating launch agent path to {correct_script_path}")
         plist_data["ProgramArguments"][0] = correct_script_path.as_posix()
-        with launch_agent_path.open("wb") as file:
-            plistlib.dump(plist_data, file)
 
     correct_input_path = str(SD_CARD_PATH)
     if plist_data["QueueDirectories"][0] != correct_input_path:
+        if "EnvironmentVariables" not in plist_data:
+            plist_data["EnvironmentVariables"] = {}
+        if IS_TESTING:
+            plist_data["EnvironmentVariables"]["IS_TESTING"] = "True"
+        else:
+            plist_data["EnvironmentVariables"].pop("IS_TESTING", None)
         logger.info(f"Updating input path to {correct_input_path}")
         plist_data["QueueDirectories"][0] = correct_input_path
+        is_changed = True
+
+    if is_changed:
         with launch_agent_path.open("wb") as file:
             plistlib.dump(plist_data, file)
+        restart_launch_agent(launch_agent_path)
 
 
 def eject_sd_card(sd_card_path: Path) -> None:
@@ -121,18 +164,10 @@ def eject_sd_card(sd_card_path: Path) -> None:
 
 
 def create_directories(
-        sd_card_path: Path,
-        output_path: Path,
-        trimmed_output_path: Path,
-        nb_output_path: Path,
+        paths_to_create: list[Path],
 ) -> bool:
-    if not sd_card_path.exists():
-        logger.error(f"SD card not found at {sd_card_path}")
-        return False
-    [
-        output_path.mkdir(exist_ok=True)
-        for output_path in [output_path, trimmed_output_path, nb_output_path]
-    ]
+    for output_path in paths_to_create:
+        output_path.mkdir(exist_ok=True, parents=True)
     return True
 
 
@@ -142,7 +177,7 @@ def copy_images_from_sd_card(sd_card_path: Path, output_path: Path) -> list[Path
         for source_file in sd_card_path.rglob(f"*.{ext}"):
             destination_file = output_path / source_file.name
             shutil.copy(source_file, destination_file)
-            logger.info(f"Processed {source_file.name}")
+            logger.info(f"Processing {source_file.name}")
             files_to_process.append(destination_file)
             if not LEAVE_IMAGES:
                 source_file.unlink()
@@ -153,12 +188,13 @@ def process_images(
         files_to_process: list[Path],
         nb_output_path: Path,
         trimmed_output_path: Path,
+        nb_trimmed_output_path: Path,
         model_name,
         background_color,
 ) -> None:
     chunk_size = max(1, len(files_to_process) // (cpu_count() * 4))
     args = [
-        (file_path, nb_output_path, trimmed_output_path, model_name, background_color)
+        (file_path, nb_output_path, trimmed_output_path, nb_trimmed_output_path, model_name, background_color)
         for file_path in files_to_process
     ]
     with Pool(cpu_count()) as pool:
@@ -221,12 +257,14 @@ def process_image(
         original_image_file_path: Path,
         nb_output_path: Path,
         trimmed_output_path: Path,
+        nb_trimmed_output_path: Path,
         model_name: str,
         background_color: RGB,
 ) -> None:
     original_image = Image.open(original_image_file_path)
 
-    qr_data, original_image = decode_and_remove_qr_label(original_image)
+    # qr_data, original_image = decode_and_remove_qr_label(original_image)
+    qr_data = None  # TODO: Remove this line when QR code is working
     output_file_name = original_image_file_path.stem
     if qr_data:
         output_file_name = qr_data
@@ -240,6 +278,7 @@ def process_image(
 
     session = new_session(model_name)
     cleaned_image = remove(original_image, session=session)
+
     cleaned_image.save(cleaned_image_file_path)
     logger.info(f"Writing {cleaned_image_file_path.name}")
 
@@ -284,16 +323,16 @@ def get_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-o",
-        "--output_path",
+        "--original_output_path",
         type=str,
-        default=str(OUTPUT_PATH),
+        default=str(ORIGINAL_OUTPUT_PATH),
         help="Path to output directory",
     )
     parser.add_argument(
-        "-t",
-        "--trimmed_output_path",
+        "-nt",
+        "--nb_trimmed_output_path",
         type=str,
-        default=str(TRIMMED_OUTPUT_PATH),
+        default=str(NB_TRIMMED_OUTPUT_PATH),
         help="Path to trimmed output directory",
     )
     parser.add_argument(
@@ -302,6 +341,13 @@ def get_args() -> argparse.Namespace:
         type=str,
         default=str(NB_OUTPUT_PATH),
         help="Path to no background output directory",
+    )
+    parser.add_argument(
+        "-t",
+        "--trimmed_output_path",
+        type=str,
+        default=str(TRIMMED_OUTPUT_PATH),
+        help="Path to trimmed output directory",
     )
     parser.add_argument(
         "-b",
@@ -382,19 +428,24 @@ def main() -> None:
     install_launch_agent()
     args = get_args()
     sd_card_path = Path(args.sd_card_path)
-    output_path = Path(args.output_path)
+    original_output_path = Path(args.original_output_path)
     trimmed_output_path = Path(args.trimmed_output_path)
+    nb_trimmed_output_path = Path(args.nb_trimmed_output_path)
     nb_output_path = Path(args.nb_output_path)
+    if not sd_card_path.exists():
+        logger.error(f"SD card not found at {sd_card_path}")
+        return
 
     if create_directories(
-            sd_card_path, output_path, trimmed_output_path, nb_output_path
+            [original_output_path, trimmed_output_path, nb_output_path, nb_trimmed_output_path]
     ):
-        copied_files = copy_images_from_sd_card(sd_card_path, output_path)
+        copied_files = copy_images_from_sd_card(sd_card_path, original_output_path)
         eject_sd_card(sd_card_path)
         process_images(
             copied_files,
             nb_output_path,
             trimmed_output_path,
+            nb_trimmed_output_path,
             args.model_name,
             args.background_color,
         )
